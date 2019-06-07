@@ -9,8 +9,6 @@ RUN zypper ref && \
     zypper clean -a && \
     mkdir /srv/salt
     
-WORKDIR /root/salt-minion
-
 ADD salt-minion.sh /
 
 CMD /salt-minion.sh
