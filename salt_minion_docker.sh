@@ -3,15 +3,9 @@
 # Set variables
 PROXY=http:\/\/10.133.132.165:8181
 
-# Clone into OpenSUSE docker container 
-rm -rf docker-containers
-
-git clone https://github.com/openSUSE/docker-containers.git
-
-cp -r docker-containers/derived_images/salt/salt-minion .
-
 
 # Add ENV variables
+sed -i '/ENV HTTP/d' salt-minion/Dockerfile
 sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"\n' salt-minion/Dockerfile
 
 # Restart Docker
@@ -32,11 +26,6 @@ docker build -t salt-minion .
 # Run the Docker image\
 echo
 echo
-echo Pinging minion...
+echo Test Pinging minion...
 echo
-# docker run -i salt-minion salt-call --local test.ping
-
-
-# Run a sample sls
-cp -r /root/sample.sls .
-docker run -i salt-minion salt-call --local 
+docker run -i salt-minion salt-call --local test.ping

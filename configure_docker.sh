@@ -14,6 +14,8 @@ export http_proxy=$PROXY
 
 
 #Docker Configuration
+echo
+echo Setting proxies in Docker https_proxy.conf ....
 PROXY_PATH=/etc/systemd/system
 rm -rf $PROXY_PATH/docker.*
 mkdir $PROXY_PATH/docker.service.d
@@ -34,6 +36,8 @@ DNS2=10.130.22.95
 DNS3=153.95.212.100
 
 
+echo
+echo Setting DNS and Proxies for Docker ...
 # Modify docker config files so as to accomodate the above proxy settings
 sed -i 's|.*DOCKER_OPTS=.*|DOCKER_OPTS="--dns '$DNS1' --dns '$DNS2' --dns '$DNS3'"|g' $DOCKER_PATH
 
@@ -44,5 +48,7 @@ sed -i 's|.*export http_proxy.*|export http_proxy="'$PROXY'/"\nexport https_prox
 
 
 # Restart Docker
+echo 
+echo Restarting Docker...
 systemctl daemon-reload
 systemctl restart docker
