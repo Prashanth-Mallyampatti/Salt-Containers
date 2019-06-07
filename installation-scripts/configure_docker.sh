@@ -1,13 +1,15 @@
 #!/bin/bash
 
-#Run the following script in root mdde
+#Run the following script in root mode
 
-#Set variables
+#Set variables, the following DNS addresses are obtained from windows cmd line: ipconfig /all
 PROXY=http:\/\/10.133.132.165:8181
 DNS1=10.130.128.1
 DNS2=10.130.22.95
 DNS3=153.95.212.100
 DOCKER_PATH=/etc/default/docker
+
+
 # Set Proxy Variable
 export https_proxy=$PROXY
 export http_proxy=$PROXY
@@ -27,13 +29,8 @@ echo "[Service]">>$PROXY_PATH/docker.service.d/http_proxy.conf
 echo "Environment=\"HTTP_PROXY=$PROXY/\"">>$PROXY_PATH/docker.service.d/http_proxy.conf
 echo "Environment=\"HTTPS_PROXY=$PROXY/\"">>$PROXY_PATH/docker.service.d/http_proxy.conf
 
-DOCKER_PATH=/etc/default/docker
 
 # The following DNS addresses are obtained from Windows cmd line: ipconfig /all
-# Update the following commands according to your DNSs
-DNS1=10.130.128.1
-DNS2=10.130.22.95
-DNS3=153.95.212.100
 
 
 echo

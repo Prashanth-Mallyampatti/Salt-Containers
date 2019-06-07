@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#Run the following script in root mdde
+#Run the following script in root mode
+
 # Set Proxy Variable
 export https_proxy=http://10.133.132.165:8181
 export http_proxy=http://10.133.132.165:8181

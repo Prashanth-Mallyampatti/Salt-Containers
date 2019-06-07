@@ -6,9 +6,6 @@
 # It avoids zombie salt-minion processes because bash implements basic
 # signal handling. It will also perform a cleanup when the process dies,
 # and waits for 5 seconds. Far than ideal.
-#
-# We could also use dumb-init if this proves not to be enough:
-#   - https://github.com/Yelp/dumb-init
 
 function cleanup() {
   local pids=`jobs -p`

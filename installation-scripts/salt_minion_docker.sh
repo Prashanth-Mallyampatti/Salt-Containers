@@ -2,11 +2,13 @@
 
 # Set variables
 PROXY=http:\/\/10.133.132.165:8181
-
+SALT_PATH=/root/devops-salt-container/salt-minion/
 
 # Add ENV variables
-sed -i '/ENV HTTP/d' salt-minion/Dockerfile
-sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"\n' salt-minion/Dockerfile
+echo
+echo Setting proxies...
+sed -i '/ENV HTTP/d' $SALT_PATH/Dockerfile
+sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"\n' $SALT_PATH/Dockerfile
 
 # Restart Docker
 systemctl daemon-reload
@@ -20,7 +22,7 @@ export http_proxy=$PROXY
 # Build Docker image
 echo
 echo Building Docker image...
-cd /root/salt-minion/
+cd $SALT_PATH
 docker build -t salt-minion .
 
 # Run the Docker image\
