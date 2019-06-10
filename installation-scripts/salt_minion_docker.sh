@@ -8,7 +8,7 @@ SALT_PATH=/root/devops-salt-container/salt-minion/
 echo
 echo Setting proxies...
 sed -i '/ENV HTTP/d' $SALT_PATH/Dockerfile
-sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"\n' $SALT_PATH/Dockerfile
+sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"' $SALT_PATH/Dockerfile
 
 # Restart Docker
 systemctl daemon-reload

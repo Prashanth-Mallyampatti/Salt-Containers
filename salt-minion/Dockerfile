@@ -2,9 +2,6 @@ FROM opensuse:leap
 ENV HTTP_PROXY "http://10.133.132.165:8181"
 ENV HTTPS_PROXY "http://10.133.132.165:8181"
 
-
-
-
 MAINTAINER FIT <DevOps@FIT>
 
 RUN zypper ref && \
