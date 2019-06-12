@@ -3,8 +3,9 @@
 #Run the following script in root mode
 
 # Set Proxy Variable
-export https_proxy=http://10.133.132.165:8181
-export http_proxy=http://10.133.132.165:8181
+# To set environment variables through script use 'source' to build that script
+export https_proxy="http://10.133.132.165:8181"
+export http_proxy="http://10.133.132.165:8181"
 
 # Remove older versions of docker
 apt-get remove docker docker-engine docker.io containerd runc
@@ -17,8 +18,8 @@ rm /var/lib/dpkg/lock
 apt-get update
 apt-get upgrade
 
-export https_proxy=http://10.133.132.165:8181
-export http_proxy=http://10.133.132.165:8181
+#export https_proxy=http://10.133.132.165:8181
+#export http_proxy=http://10.133.132.165:8181
 
 sudo apt-get install \
     apt-transport-https \
@@ -42,4 +43,14 @@ apt-get upgrade
 apt-get install docker-ce docker-ce-cli containerd.io
 
 # Verify docker is installed
-docker --help
+docker --version
+if [ $? -eq 0 ]
+then
+    echo
+    echo "Docker Installation Successful"
+    echo
+else
+    echo
+    echo "Docker Installation Failed"
+    echo
+fi

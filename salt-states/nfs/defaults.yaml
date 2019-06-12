@@ -1,0 +1,8 @@
+# -*- coding: utf-8 -*-
+# vim: ft=yaml
+---
+nfs:
+  defaults: /etc/sysconfig/nfs
+  pkg: nfs-kernel-server
+  service:
+    name: nfsserver

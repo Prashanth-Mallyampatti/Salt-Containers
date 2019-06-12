@@ -1,14 +1,16 @@
 #!/bin/bash
 
+set -e
+
 #Run the following script in root mode
 
 #Set variables, the following DNS addresses are obtained from windows cmd line: ipconfig /all
-PROXY=http:\/\/10.133.132.165:8181
-DNS1=10.130.128.1
-DNS2=10.130.22.95
-DNS3=153.95.212.100
-DOCKER_PATH=/etc/default/docker
-
+PROXY="http://10.133.132.165:8181"
+DNS1="10.130.128.1"
+DNS2="10.130.22.95"
+DNS3="153.95.212.100"
+DOCKER_PATH="/etc/default/docker"
+PROXY_PATH="/etc/systemd/system"
 
 # Set Proxy Variable
 export https_proxy=$PROXY
@@ -18,7 +20,6 @@ export http_proxy=$PROXY
 #Docker Configuration
 echo
 echo Setting proxies in Docker https_proxy.conf ....
-PROXY_PATH=/etc/systemd/system
 rm -rf $PROXY_PATH/docker.*
 mkdir $PROXY_PATH/docker.service.d
 touch $PROXY_PATH/docker.service.d/http_proxy.conf
@@ -30,9 +31,7 @@ echo "Environment=\"HTTP_PROXY=$PROXY/\"">>$PROXY_PATH/docker.service.d/http_pro
 echo "Environment=\"HTTPS_PROXY=$PROXY/\"">>$PROXY_PATH/docker.service.d/http_proxy.conf
 
 
-# The following DNS addresses are obtained from Windows cmd line: ipconfig /all
-
-
+# Set DNS and proxy addresses
 echo
 echo Setting DNS and Proxies for Docker ...
 # Modify docker config files so as to accomodate the above proxy settings

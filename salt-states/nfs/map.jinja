@@ -1,0 +1,22 @@
+# -*- coding: utf-8 -*-
+# vim: ft=jinja
+
+{## Start imports as ##}
+{% import_yaml 'nfs/defaults.yaml' as default_settings %}
+{% import_yaml 'nfs/osfamilymap.yaml' as osfamilymap %}
+{% import_yaml 'nfs/osmap.yaml' as osmap %}
+{% import_yaml 'nfs/osfingermap.yaml' as osfingermap %}
+
+{% set defaults = salt['grains.filter_by'](default_settings,
+    default='nfs',
+    merge=salt['grains.filter_by'](osfamilymap, grain='os_family',
+      merge=salt['grains.filter_by'](osmap, grain='os',
+        merge=salt['grains.filter_by'](osfingermap, grain='osfinger',
+          merge=salt['pillar.get']('nfs:lookup', default={})
+        )
+      )
+    )
+) %}
+
+{## Merge the nfs pillar ##}
+{% set nfs = salt['pillar.get']('nfs', default=defaults, merge=True) %}

@@ -23,11 +23,11 @@ Note:
 1. Clone this repository and place it in `/root` directory
 2. `cd devops-salt-container/installation-scripts/`
 3. Install Docker on Ubuntu 18.04 (virtual box behind a proxy server):
-    <br />`yes Y | bash ./install_docker.sh`
+    <br />`yes Y | source ./install_docker.sh`
 4. Configure Docker and set the environment:
-    <br />`yes Y | bash ./configure_docker.sh`
+    <br />`source ./configure_docker.sh`
 5. Install salt-minion on a docker container and test ping:
-    <br />`bash ./salt_minion_docker.sh`
+    <br />`source ./salt_minion_docker.sh`
 6. Run `.sls` state file on the the openSUSE docker container:
     <br />`bash ./run_salt_states.sh sample`
     <br />The above command takes one command line argument: name of the state file(which is placed in `salt-states` folder). In the above command `sample` is specified as the command line argument.
