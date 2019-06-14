@@ -1,0 +1,38 @@
+#!/bin/ksh
+
+#
+#   $URL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_sles_uptime $
+#   $Rev: 453 $
+#    $Id: nrpe_sles_uptime 453 2017-11-28 21:19:46Z itvolla $
+#
+#
+# Check return the uptime of the system. No parameter, no Perf data
+#
+# syntax: /usr/lib/nagios/plugins/nrpe_sles_uptime
+#
+# responsible: Adam Vollmar
+#
+## itlenzj: 20140311: script erstellt
+#
+#
+
+if [[ $# -gt 0 ]]; then
+        echo "Returns the uptime of a system"
+        exit 3
+fi
+
+HOSTN="/bin/hostname"
+UPTIME="/usr/bin/uptime"
+
+PLUGIN=$(/bin/rpm -qa | grep nrpe-linux-plugins | sed 's/nrpe-linux-plugins-//')
+
+if [[ ! -x $UPTIME ]]; then
+	echo "WARNING - Programm $UPTIME not available"
+	exit 1
+fi
+
+echo "OK - $($HOSTN) - $($UPTIME) - $PLUGIN"
+
+exit 0
+
+

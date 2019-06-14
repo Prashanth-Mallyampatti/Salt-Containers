@@ -1,0 +1,28 @@
+#!/usr/bin/ksh
+#
+# nrpe wrapper for /usr/lib/nagios/plugins/nrpe_check_oracle_dbfreechunks.pl
+#
+# Usage : /usr/lib/nagios/plugins/wrapper_check_oracle_dbfreechunks -S "$ARG1$" -R "$ARG2$" -v "$ARG3$"
+#		  for more help see : /usr/lib/nagios/plugins/nrpe_check_oracle_dbfreechunks.pl
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running
+#
+#
+# itvolla: 20171107: script created
+
+# $Id: wrapper_check_oracle_dbfreechunks 399 2017-11-07 16:05:27Z itvolla $
+# $HeadURL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/wrapper_check_oracle_dbfreechunks $
+# $Rev: 399 $
+###############################################################
+
+CHECKSCRIPT=/usr/lib/nagios/plugins/nrpe_check_oracle_dbfreechunks.pl
+
+[[ -x $CHECKSCRIPT ]] || {
+	echo "UNKNOWN : check $CHECKSCRIPT not found"
+	exit 3
+}
+
+sudo $CHECKSCRIPT "$@"
+

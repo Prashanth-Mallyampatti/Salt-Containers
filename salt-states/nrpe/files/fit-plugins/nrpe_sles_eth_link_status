@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# Return only warnings, no critical if a interface is not connected
+#
+# AUFRUF: /usr/lib/nagios/plugins/nrpe_sles_eth_link
+#
+# responsible: Joerg Lenz, Netlution GmbH
+#
+# Requirements: nrpe agent must be configured and running, ethtool installed
+#
+# itlenzj: 20140408: script erstellt
+#
+
+EXCLUDELINK=""
+
+while getopts ":L:" param
+do
+        case $param in
+                L)      EXCLUDELINK=`echo $OPTARG|tr "," "|"`  ;;
+                \?)     echo "Try $0 -L 'exclude links', e.g. $0 -L eth1,eth22"
+                        exit 3
+                        ;;
+
+                *)      echo "UNKNOWN: $0 unknown error!"
+                        exit 3
+                        ;;
+        esac
+done
+
+if [ -z "$EXCLUDELINK" ]; then 
+	LINK=`ifconfig | grep ^e |awk '{ print $1 }'`
+else
+	LINK=`ifconfig | grep ^e |awk '{ print $1 }'| egrep -iv "$EXCLUDELINK"`
+fi
+
+if [ -z "$LINK" ]; then
+	echo "Info - All interfaces exclueded : excluded Links=$EXCLUDELINK"
+	exit 3
+else
+	LINKTRUE=`for ETH in $LINK; do ethtool $ETH | sed -e "s/^/$ETH /"| grep "Link detected" | grep -v yes ;done`
+		if [ -z "$LINKTRUE" ]; then
+
+			echo "Ok - All links connected"
+			exit 0
+		else
+			echo "Warning - Link lost;  $LINKTRUE"
+			exit 1	
+
+		fi
+		
+fi
+exit 3

@@ -1,0 +1,41 @@
+# -*- coding: utf-8 -*-
+# vim: ft=yaml
+---
+sudoers:
+  pkg: sudo
+  config: '/etc/sudoers'
+  # Default SUDO Configuration
+  users:
+    ALL:
+      - 'ALL=(ALL) ALL'
+    root:
+      - 'ALL=(ALL) ALL'
+  groups:
+    sapsys:
+      - 'ALL=(ALL) !ALL'
+    sapinst:
+      - 'ALL=(ALL) !ALL'
+    automate:
+      - 'ALL=(ALL) NOPASSWD: ALL'
+  defaults:
+    generic:
+      - always_set_home
+      - mail_badpass
+      - secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      - env_keep="LANG LC_ADDRESS LC_CTYPE LC_COLLATE LC_IDENTIFICATION LC_MEASUREMENT LC_MESSAGES LC_MONETARY LC_NAME LC_NUMERIC LC_PAPER LC_TELEPHONE LC_TIME LC_ALL LANGUAGE LINGUAS XDG_SESSION_COOKIE"
+      - logfile=/var/log/sudo.log
+  includedir: /etc/sudoers.d
+  included_files:
+    /etc/sudoers.d/discover:
+      users:
+        discover:
+          - 'ALL=(root) DISCOVER_COMMANDS, NOPASSWD: DISCOVER_COMMANDS'
+      aliases:
+        commands:
+          DISCOVER_COMMANDS:
+            - /usr/sbin/dmidecode
+            - /usr/bin/lsof
+            - /sbin/fdisk -l
+            - /sbin/dmsetup table *
+            - /sbin/dmsetup ls
+            - /sbin/multipath -ll

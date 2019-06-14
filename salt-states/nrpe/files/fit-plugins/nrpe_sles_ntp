@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# Check return the ntp offset of the system.
+#
+# AUFRUF: /usr/lib/nagios/plugins/nrpe_aix_ntp
+#
+# responsible: Patrick Daloiso, Netlution GmbH
+#
+# itdalop: 20140506 initial
+#
+#
+
+NTP="/usr/sbin/ntpq"
+
+
+# Check parameter -w und -c. Default WOFFSET und COFFSET
+WOFFSET=5
+COFFSET=15
+
+while getopts ":w:c:" param
+do
+        case $param in
+                w)      WOFFSET=($OPTARG);;
+                c)      COFFSET=($OPTARG);;
+                \?)     echo "UNKNOWN: $0 Illegal option '$OPTARG' found!. Try $0 [-w 3 -c 5] "
+                        exit 3
+                        ;;
+
+                *)      echo "UNKNOWN: $0 unknown error! Try $0 -w 3 -c 5"
+                        exit 3
+                        ;;
+        esac
+done
+
+
+if [ ! -x $NTP ]; then
+        echo " Programm $NTP not available"
+        exit 3
+fi
+
+OFFSET=`/usr/sbin/ntpq -p | awk '{ print $9 }' | grep -v offset | grep -v ^$ | sed s/-//g | awk '{ print $1 }'`
+
+MAXOFFSET=`echo $OFFSET | awk '{max=$1; for(i=2;i<=4;i++){if($i>max) max=$i} print max }'` 
+
+MAX=`echo $MAXOFFSET | cut -d "." -f1`
+
+if [ "$MAX" -lt "$WOFFSET" ]; then
+        echo "OK - maximum NTP offset is $MAXOFFSET (W:$WOFFSET;C:$COFFSET)"
+        exit 0
+fi
+
+if [ "$MAX" -ge "$COFFSET" ]; then
+        echo "CRITICAL maximum NTP offset is $MAXOFFSET (W:$WOFFSET;C:$COFFSET)"
+        exit 2
+fi
+if [ "$MAX" -ge "$WOFFSET" ]; then
+        echo "WARNING maximum NTP offset is $MAXOFFSET (W:$WOFFSET;C:$COFFSET)"
+        exit 1
+fi
+
+exit 3

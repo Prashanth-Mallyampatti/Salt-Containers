@@ -1,0 +1,115 @@
+#!/usr/bin/ksh
+#
+# Check the system cpu load and returns waring or critical
+#
+# Usage : /usr/lib/nagios/plugins/nrpe_load [-q] [-r] -w 10,10,10 -c 20,20,20
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running
+#
+#
+# itlenzj: 20140311: script erstellt
+
+# $Id: nrpe_load 354 2017-10-17 13:28:42Z itvolla $
+# $HeadURL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_load $
+# $Rev: 354 $
+
+
+# Check parameter
+WPARAM="10,10,10"
+CPARAM="20,20,20"
+CPUCOUNT="1"
+
+while getopts ":w:c:rqd" param; do
+	case $param in
+		w)	WPARAM="$OPTARG";;
+		c)	CPARAM="$OPTARG";;
+		d)	DEBUG=1
+			set -x
+			;;
+		r)	CPUCOUNT=$(cat /proc/cpuinfo | grep processor | wc -l)
+			;;
+		q)	# quiet mode; disable alarms - just reporting
+			NO_ALARM=1
+			;;
+		\?)	echo "UNKNOWN: $0 Illegal option '$OPTARG' found!. Try $0 -w 10,10,10 -c 20,20,20 (1min, 5min, 15min); 
+				-r Divide the load averages by the number of CPUs 
+				-d debug; set -x"
+			exit 3
+			;;
+		*)	echo "UNKNOWN: $0 unknown error!"
+			exit 3
+			;;
+	esac
+done
+
+#######################################
+
+#echo $CPUCOUNT
+CPUCOUNT=$(echo $CPUCOUNT)
+[[ $CPUCOUNT == +([0-9]) ]] || CPUCOUNT=1
+if [ "$CPUCOUNT" -le "1" ]; then 
+	CPUCOUNT="1"; 
+fi
+
+# Fill parameter
+WLOAD1=${WPARAM%%,*}
+WLOAD5=$(echo $WPARAM | cut -d ',' -f2)
+WLOAD15=${WPARAM##*,}
+CLOAD1=${CPARAM%%,*}
+CLOAD5=$(echo $CPARAM | cut -d ',' -f2)
+CLOAD15=${CPARAM##*,}
+
+# get current load
+CPULOAD=$(cat /proc/loadavg 2>/dev/null) 
+set -- $CPULOAD
+CPULOAD_ORIG="$1 $2 $3"
+LOAD1=${1} 
+LOAD5=${2} 
+LOAD15=${3} 
+
+# check, if values are numeric
+[[ $LOAD1 == +([0-9]).+([0-9]) || $LOAD1 == +([0-9]) ]] || {
+	echo "Warning - unexpected load values | LOAD1=$LOAD1 LOAD5=$LOAD5 LOAD15=$LOAD15"
+	exit 1
+}
+
+# load statistic with decimal places; not normalized
+PERFLOAD=$(echo $CPULOAD_ORIG | awk '{ print "LOAD1="$1" LOAD5="$2" LOAD15="$3 }')
+
+## no alarming; just reporting
+[[ $NO_ALARM = 1 ]] && {
+	echo "Ok - Current load: $CPULOAD_ORIG (W=$WPARAM; C=$CPARAM) | $PERFLOAD "
+	exit 0
+}
+
+#///////////////////////////////////////////////////
+# load values normalized by number cores; with decimal places
+LOAD1n=$(echo $LOAD1 | awk -v c=$CPUCOUNT '{ printf("%.1f\n",$0/c) }')
+LOAD5n=$(echo $LOAD5 | awk -v c=$CPUCOUNT '{ printf("%.1f\n",$0/c) }')
+LOAD15n=$(echo $LOAD15 | awk -v c=$CPUCOUNT '{ printf("%.1f\n",$0/c) }')
+## integer
+LOAD1ni=$(printf "%.f" $LOAD1n)
+LOAD5ni=$(printf "%.f" $LOAD5n)
+LOAD15ni=$(printf "%.f" $LOAD15n)
+# CPULOAD normalized by number of CPUs, with decimal places
+CPULOAD_NORM="$LOAD1n $LOAD5n $LOAD15n"	# not needed yet
+
+# check, if all values are below treshhold
+if [[ $LOAD1ni -lt $WLOAD1 && $LOAD5ni -lt $WLOAD5 && $LOAD15ni -lt $WLOAD15 ]]; then
+	echo "Ok - Current load: $CPULOAD_ORIG (W=$WPARAM; C=$CPARAM) | $PERFLOAD "
+	exit 0
+fi 
+
+# critical value for 15 min is ignored
+if [[ $LOAD1ni -ge $CLOAD1 || $LOAD5ni -ge $CLOAD5 ]];  then
+	echo "Critical - Current Load c=$CPULOAD_ORIG (W=$WPARAM; C=$CPARAM) | $PERFLOAD"
+	exit 2
+else 
+	echo "Warning - Current Load w=$CPULOAD_ORIG (W=$WPARAM; C=$CPARAM) | $PERFLOAD "
+	exit 1 
+fi
+
+exit 3
+

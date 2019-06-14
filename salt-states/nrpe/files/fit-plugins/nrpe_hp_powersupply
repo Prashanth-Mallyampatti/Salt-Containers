@@ -1,0 +1,81 @@
+#!/bin/ksh
+#
+# Check the power status of a HP System with /sbin/hpasmcli 
+# Status can be ok or critical
+#
+#	$URL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_hp_powersupply $
+#	$Rev: 452 $
+#	$Id: nrpe_hp_powersupply 452 2017-11-28 21:18:46Z itvolla $
+#
+# syntax: /usr/lib/nagios/plugins/nrpe_hp_powersupply
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running, hpasmcli
+#               entry in /etc/sudoers or /etc/sudoers.d/nagios
+#
+# itlenzj: 20140311: script erstellt
+
+##project## yes=supported, todo=planned, NA=not applicable, not=not allowed, test=test, ?=unknown
+# project     Responsible   : itvolla
+# project     Level         : 4
+# project     CLASS         : MONITORING
+# project     Script        : ksh
+# project OS  AIX52         : not
+# project OS  AIX61         : not
+# project OS  AIX71         : not
+# project OS  SLES8         : NA
+# project OS  SLES9         : yes
+# project OS  SLES10        : yes
+# project OS  SLES11        : yes
+# project OS  SLES11SP2     : yes
+# project OS  SLES12        : yes
+# project OS  HP-UX         : not
+# project     nSID          : NA
+# project     DC two-digit  : NA
+# project     wcoll extern  : NA
+# project     NetApp        : NA
+# project     no ssh cw     : NA
+# project     no r-commands : NA
+# project     node.cfg      : NA
+# project DB  ORACLE        : NA
+# project DB  DB2           : NA
+# project DB  SAPDB         : NA
+# project DB  SYBASE        : NA
+# project LOC Germany       : yes
+# project LOC USA           : todo
+# project LOC China         : yes
+# project LOC Canada        : NA
+
+#
+HPASMCLI="/sbin/hpasmcli"
+
+if [[ $1 = "-h" ]]; then
+	echo "Check the power status of a HP System with /sbin/hpacucli"
+	echo "Status can be OK or Critical. Call $0 with no Parameters "
+	exit 3
+fi
+ 
+if [[ $# -gt 0 ]]; then
+	echo "Number of parameters wrong. Try $0 -h"
+	exit 3
+fi
+
+if [[ ! -e $HPASMCLI ]]; then
+	echo "WARNING - Program $HPASMCLI not found"
+	exit 1
+fi
+
+### POWER ###
+POWER=$(sudo $HPASMCLI -s "SHOW POWERSUPPLY")
+POWERSTATUS=$(echo "$POWER" | grep Condition:)
+POWER_NOT_OK=$(echo "$POWER" | grep Condition: | grep -cv Ok)
+
+if [[ $POWER_NOT_OK -eq 0 ]]; then
+	echo "OK - POWER is ok"
+	exit 0
+else
+	echo "Critical- POWER is critical"
+	echo "$POWERSTATUS" | grep -v Ok
+fi
+

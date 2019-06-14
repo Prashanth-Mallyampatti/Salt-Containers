@@ -1,0 +1,90 @@
+#!/bin/ksh
+#
+# To check the fan status of a HP System with /sbin/hpasmcli 
+# Status can be OK, WARNING or CRITICAL
+#
+#	$URL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_hp_fan $
+#	$Rev: 452 $
+#	$Id: nrpe_hp_fan 452 2017-11-28 21:18:46Z itvolla $
+#
+# syntax: /usr/lib/nagios/plugins/nrpe_hp_fan_status
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running, hpasmcli
+#               entry in /etc/sudoers or /etc/sudoers.d/nagios
+#
+# itlenzj: 20140311: script erstellt
+
+##project## yes=supported, todo=planned, NA=not applicable, not=not allowed, test=test, ?=unknown
+# project     Responsible   : itvolla
+# project     Level         : 4
+# project     CLASS         : MONITORING
+# project     Script        : ksh
+# project OS  AIX52         : not
+# project OS  AIX61         : not
+# project OS  AIX71         : not
+# project OS  SLES8         : NA
+# project OS  SLES9         : yes
+# project OS  SLES10        : yes
+# project OS  SLES11        : yes
+# project OS  SLES11SP2     : yes
+# project OS  SLES12        : yes
+# project OS  HP-UX         : not
+# project     nSID          : NA
+# project     DC two-digit  : NA
+# project     wcoll extern  : NA
+# project     NetApp        : NA
+# project     no ssh cw     : NA
+# project     no r-commands : NA
+# project     node.cfg      : NA
+# project DB  ORACLE        : NA
+# project DB  DB2           : NA
+# project DB  SAPDB         : NA
+# project DB  SYBASE        : NA
+# project LOC Germany       : yes
+# project LOC USA           : todo
+# project LOC China         : yes
+# project LOC Canada        : NA
+
+HPASMCLI="/sbin/hpasmcli"
+
+if [[ $1 = "-h" ]]; then
+	echo "Check the fan status of a HP System with /sbin/hpacucli"
+	echo "Status can be OK or Critical. Call $0 with no Parameters "
+	exit 3
+fi
+ 
+if [[ $# -gt 0 ]]; then
+	echo "Number of parameters wrong. Try $0 -h"
+	exit 3
+fi
+
+if [[ ! -e $HPASMCLI ]]; then
+	echo "WARNING - Program $HPASMCLI not found"
+	exit 1
+fi
+
+### FAN ###
+FAN=$(sudo $HPASMCLI -s "SHOW FAN")
+FAN_STATUS_NOT_OK=$(echo "$FAN" | grep ^# | grep -v NORMAL)
+NUM_FAN_NOT_OK=$(echo "$FAN" | grep ^# | grep -cv NORMAL)
+
+if [[ -z $FAN_STATUS_NOT_OK ]]; then
+	echo "OK - FANs are ok"
+	exit 0
+fi
+
+if [[ $NUM_FAN_NOT_OK -eq 1 ]]; then
+	echo "WARNING - 1 FAN is critical"
+	echo "$FAN_STATUS_NOT_OK"
+	exit 1
+fi
+
+if [[ $NUM_FAN_NOT_OK -gt 1 ]]; then
+	echo "CRITICAL - $NUM_FAN_NOT_OK FANs are critical"
+	echo "$FAN_STATUS_NOT_OK"
+	exit 2
+fi
+
+

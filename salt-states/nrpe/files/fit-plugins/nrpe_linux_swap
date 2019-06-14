@@ -1,0 +1,186 @@
+#!/usr/bin/ksh
+#
+# get swap-in and swap-out values from /proc/vmstat
+#
+# Usage : /usr/lib/nagios/plugins/nrpe_linux_swap [-h] [-d] [-q] [-w 10] [-c 20] [-p prev-message]
+#	h : help
+#	d : debug
+#	q : quite mode; no alarms
+#	w : warning treshold; future use
+#	c : critical treshold; future use
+#	p : text of previous message, which was returned by this script;
+#		this is needed to calculate the difference between the two intervals
+#
+#	Sample output format:
+#	OK - swap pages/s in/out 0/0 | swap_page_in=0;;;; swap_page_out=0;;;;
+#	raw data: pswpin=10125 pswpout=123 UpdateTime=1489591216
+#
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running
+#
+#
+# itvolla: 20170316: script created
+
+# $Id: nrpe_linux_swap 350 2017-10-12 12:49:27Z itvolla $
+# $HeadURL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_linux_swap $
+# $Rev: 350 $
+###############################################################
+
+USAGE="
+USAGE 
+	/usr/lib/nagios/plugins/nrpe_linux_swap [-h] [-d] [-v 0|1|2] [-q] [-w #] [-c #]
+
+DESCRIPTION
+
+	h : help
+	d : debug
+	v : verbose value
+	q : quite mode; no alarms
+	w : warning treshold; future use
+	c : critical treshold; future use
+
+	Sample output format:
+	OK - swap pages/m in/out 0/0 | swap_page_in=0;;;; swap_page_out=0;;;;
+	raw_data: pswpin=10125 pswpout=123 updtime=1489591216
+
+	The shown values are the average pages per minute during the icinga execution intervall.
+
+FILES
+	- /tmp/${0##*/}.vmstat
+	  current values will be written into this file, so that
+	  the next call of the script has the previous values
+"
+
+######################### MAIN ######################################
+# Check parameter
+
+while getopts ":hqdv:w:c:" param; do
+	case $param in
+		h)
+			print -u2 -- "$USAGE"
+			exit 3
+			;;
+		w)	WARN_TH="$OPTARG";;
+		c)	CRIT_TH="$OPTARG";;
+		v)	VERBOSE="$OPTARG";;
+		d)	DEBUG=1
+			set -x
+			;;
+		q)	# quiet mode; disable alarms - just reporting
+			NO_ALARM=1
+			;;
+		'?'|':')	
+			echo "UNKNOWN: $0 Illegal option '$OPTARG' found!. show help with -h"
+			exit 3
+			;;
+	esac
+done
+
+#######################################
+
+VMSTAT_SRC=/proc/vmstat
+# current values will be written here
+DATA_FILE=/tmp/${0##*/}.vmstat
+# string current values
+CURRENT_DATA=""
+# defaults
+p_pswpin=0
+p_pswpout=0
+p_updtime=0
+
+if [[ -f $DATA_FILE ]]; then
+	PREV_MSG=$(cat $DATA_FILE)
+else
+	touch $DATA_FILE
+	# just to be sure, that user nagios is able to change the file
+	chown nagios:nagios $DATA_FILE 2>/dev/null
+fi
+
+## get values from previos check
+[[ -n $PREV_MSG ]] && {
+	prev_data=$(echo "$PREV_MSG" | grep 'raw_data:' | sed 's/^.*raw_data://')
+	p_pswpin=$(echo $prev_data | awk '{ print $1 }' | sed 's/pswpin=//')
+	p_pswpout=$(echo $prev_data | awk '{ print $2 }' | sed 's/pswpout=//')
+	p_updtime=$(echo $prev_data | awk '{ print $3 }' | sed 's/updtime=//')
+	p_pswpin=${p_pswpin:-0}
+	p_pswpout=${p_pswpout:-0}
+	p_updtime=${p_updtime:-0}
+}
+
+## get current values from vmstat
+if [[ -f $VMSTAT_SRC ]]; then
+	c_pswpin=$(grep ^pswpin $VMSTAT_SRC)
+	c_pswpout=$(grep ^pswpout $VMSTAT_SRC)
+	c_updtime=$(date +%s)
+	# get just the value
+	c_pswpin=${c_pswpin##* }
+	c_pswpout=${c_pswpout##* }
+	CURRENT_DATA="raw_data: pswpin=${c_pswpin} pswpout=${c_pswpout}"
+	echo "$CURRENT_DATA updtime=${c_updtime}" > $DATA_FILE 2>/dev/null
+	[[ ! -f $DATA_FILE ]] && {
+		echo "UNKNOWN - $0 unable to create $DATA_FILE"
+		exit 3
+	}
+else
+	echo "UNKNOWN - $0 unable to read $VMSTAT_SRC !"
+	exit 3
+fi
+
+if [[ $p_updtime = 0 ]]; then
+	pswpin_pm=0
+	pswpout_pm=0
+else
+	## calc values
+	diff_time=$((c_updtime - p_updtime))
+	# calc minutes
+	diff_time=$((diff_time / 60))
+	[[ $diff_time = 0 ]] && diff_time=1
+	diff_pswpin=$((c_pswpin - p_pswpin))
+	diff_pswpout=$((c_pswpout - p_pswpout))
+	# avoid negative values; perhaps due to overflow
+	[[ $diff_pswpin -lt 0 ]] && diff_pswpin=0
+	[[ $diff_pswpout -lt 0 ]] && diff_pswpout=0
+	# calc minute average
+	pswpin_pm=$((diff_pswpin / diff_time))
+	pswpout_pm=$((diff_pswpout / diff_time))
+fi
+
+[[ -n $NO_ALARM ]] && {
+	echo "OK - swap pages/m in/out ${pswpin_pm}/${pswpout_pm} | swap_page_in=${pswpin_pm};;;; swap_page_out=${pswpout_pm};;;;"
+	echo "$CURRENT_DATA"
+	exit 0
+}
+
+##################################################
+## check for treshold
+
+# default ExitCode
+EC=0
+# return messages, depending on ExitCode
+MSG_0=OK
+MSG_1=WARNING
+MSG_2=ERROR
+MSG_3=UNKNOWN
+
+[[ -n $WARN_TH && -n $CRIT_TH ]] && {
+	[[ $pswpin_pm -gt $WARN_TH ]] && EC=1
+	[[ $pswpin_pm -gt $CRIT_TH ]] && EC=2
+}
+
+## build message for icinga
+RETVAL=$(eval echo \$MSG_$EC)
+
+print -f "%s" -- "$RETVAL - "
+print -f "%s" -- "swap pages/m in/out ${pswpin_pm}/${pswpout_pm}"
+[[ $VERBOSE -ge 1 ]] && {
+	print -f "%s\n" -- " | swap_page_in=${pswpin_pm};;;; swap_page_out=${pswpout_pm};;;;"
+}
+[[ $VERBOSE -gt 1 ]] && {
+	print -f "%s\n" -- "$CURRENT_DATA"
+}
+[[ $VERBOSE -eq 0 ]] && print -f "\n" -- ""
+
+exit $EC
+

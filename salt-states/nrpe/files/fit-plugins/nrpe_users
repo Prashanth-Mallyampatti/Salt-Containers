@@ -1,0 +1,59 @@
+#/bin/bash
+#
+# Check returns the number of currently loggin users
+# Defaults with no parameter are definend in WARN_USER and CRIT_USER
+#
+# AUFRUF: /usr/lib/nagios/plugins/nrpe_users -w ? -c ?
+#
+# responsible: Joerg Lenz, Netlution GmbH
+#
+# Requirements: nrpe agent must be configured and running
+#
+#
+# itlenzj: 20140403: script erstellt
+#
+
+CURRENT=`/usr/bin/w -sh |wc -l`
+
+OK=0
+WARN=1
+CRIT=2
+UNKN=3
+WARN_USER=40
+CRIT_USER=80
+
+while getopts ":w:c:" param
+do
+        case $param in
+                w)      WARN_USER=$OPTARG;;
+                c)      CRIT_USER=$OPTARG;;
+                \?)     echo "UNKNOWN: $0 Illegal option '$OPTARG' found!. Try $0 -w 30 -c 40 "
+                        exit $UNKN
+                        ;;
+
+                *)      echo "UNKNOWN: $0 unknown error!"
+                        exit $UNKN
+                        ;;
+        esac
+done
+
+# check if WARN value is smaller than CRIT value
+# if not, return UNKNOWN
+if [[ "$WARN_USER" -ge "$CRIT_USER" ]] && [[ "$CRIT_USER" -gt 0 ]] ; then
+        echo "UNKNOWN: $0 specified warning value is equal or greater than critical value! WARN=$WARN_USER, CRIT=$CRIT_USER"
+        exit $UNKN
+fi
+
+	if [[ "$CURRENT" -lt "$WARN_USER" ]]; then
+		echo "OK - $CURRENT users currently logged in | users=$CURRENT;$WARN_USER;$CRIT_USER;0" 
+		exit $OK
+	elif [[ "$CURRENT" -ge "$WARN_USER" ]] && [[ "$CURRENT" -lt "$CRIT_USER" ]]; then
+		echo "Warning - $CURRENT users currently logged in | users=$CURRENT;$WARN_USER;$CRIT_USER;0"
+		exit $WARN
+	else
+		echo "Critical - $CURRENT users currently logged in | users=$CURRENT;$WARN_USER;$CRIT_USER;0"
+	 	exit $CRIT
+	fi
+
+echo "$WARN_USER ; $CRIT_USER"
+exit $UNKN

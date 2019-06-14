@@ -1,0 +1,65 @@
+#!/usr/bin/ksh
+#
+#
+#   $URL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_sles_nfs_mounts $
+#   $Rev: 404 $
+#    $Id: nrpe_sles_nfs_mounts 404 2017-11-08 15:33:12Z itvolla $
+#
+# Compares /etc/fstab and /proc/mounts
+# If a FS is not mounted, then the check print out a warning
+#
+# AUFRUF: /usr/lib/nagios/plugins/nrpe_sles_nfs_mounts
+#
+# responsible: Joerg Lenz, Netlution GmbH
+#
+# itlenzj: 20140311: script erstellt
+#
+# Anzahl der Mounts in FSTAB und PROC/MOUNT
+
+EXCLUDEFS=""
+while getopts ":L:" param; do #{
+	case $param in
+		L)	EXCLUDEFS=$(echo $OPTARG|tr "," "|")  ;;
+		\?)
+			echo "Try $0 -L 'exclude fs,  e.g. $0 -L sapinst,dbinst"
+			exit 3
+			;;
+
+		*)
+			echo "UNKNOWN: $0 unknown error!"
+			exit 3
+			;;
+	esac
+done #}
+
+CFSTAB=$(cat /etc/fstab | grep -v ^# | grep 'dbsinst|sapinst' | grep -E -c -w "nfs|nfs4")
+if [[ -z "$EXCLUDEFS" ]]; then
+	CPROCMOUNT=$(cat /proc/mounts | grep -E -w "nfs|nfs4" | grep 'dbsinst|sapinst' | grep -v ^# | grep -c -v rpc_pipefs)
+else
+	CPROCMOUNT=$(cat /proc/mounts | grep -E -w "nfs|nfs4" | grep 'dbsinst|sapinst' | grep -v ^# | egrep -iv "$EXCLUDEFS" | grep -c -v rpc_pipefs)
+fi
+
+if [[ "$CFSTAB" -eq "$CPROCMOUNT" ]]; then
+	echo "OK - All nfs mounts connected"
+	exit 0
+fi
+
+if [[ "$CFSTAB" -eq "0" ]]; then
+	echo "OK - No nfs mounts found"
+	exit 0
+fi
+
+EFSTAB=$(cat /etc/fstab | grep -E -w "nfs|nfs4" | awk '{ print $1,$2,$3 }')
+EPROCMOUNT=$(cat /proc/mounts | grep -E -w "nfs|nfs4" | grep -v rpc_pipefs | awk '{ print $1,$2,$3 }')
+DIFFS=$(echo -e "$EPROCMOUNT""\n$EFSTAB"| tr -d "/" | sort | uniq -u)
+	
+if [[ "$CFSTAB" -lt "$CPROCMOUNT" ]]; then
+	echo "Warning - More nfs shares connected as in fstab configured" 
+	echo -e "Additional entries found in PROCMOUNT: \n$DIFFS" 
+	exit 1
+else 
+	echo "Warning - Fewer nfs shares connected as in fstab configured"
+	echo -e "Additional entries found in FSTAB: \n$DIFFS" 
+	exit 1
+fi
+

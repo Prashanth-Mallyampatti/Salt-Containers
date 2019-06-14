@@ -10,18 +10,17 @@ export http_proxy="http://10.133.132.165:8181"
 # Remove older versions of docker
 apt-get remove docker docker-engine docker.io containerd runc
 
+set -e
+
 # Remove any locks held by others
 rm /var/lib/apt/lists/lock
 rm /var/lib/dpkg/lock
 
 # Install Docker from repository
-apt-get update
-apt-get upgrade
+apt update
+apt upgrade
 
-#export https_proxy=http://10.133.132.165:8181
-#export http_proxy=http://10.133.132.165:8181
-
-sudo apt-get install \
+apt-get install \
     apt-transport-https \
     ca-certificates \
     curl \
@@ -37,8 +36,8 @@ add-apt-repository \
    $(lsb_release -cs) \
    stable"
 
-apt-get update
-apt-get upgrade
+apt update
+apt upgrade
 
 apt-get install docker-ce docker-ce-cli containerd.io
 

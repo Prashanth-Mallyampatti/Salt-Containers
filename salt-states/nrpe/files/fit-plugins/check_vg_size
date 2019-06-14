@@ -1,0 +1,299 @@
+#!/bin/bash
+#check_vg_size
+#set -x 
+# Plugin for Nagios
+# Written by M. Koettenstorfer (mko@lihas.de)
+# Some additions by J. Schoepfer (jsc@lihas.de)
+# Major changes into functions and input/output values J. Veverka (veverka.kuba@gmail.com)
+# Additional changes and features B. Carlson (billcarlson@wkks.org)
+# Last Modified: 2016-02-15
+#
+# Description:
+#
+# This plugin will check howmany space in volume groups is free
+
+# Nagios return codes
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+STATE_DEPENDENT=4
+
+SERVICEOUTPUT=""
+SERVICEPERFDATA=""
+
+PROGNAME=$(basename $0)
+
+vgs_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f vgs | awk '{ print $2 }'`
+_vgs="$vgs_bin --units=g"
+
+bc_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f bc | awk '{ print $2 }'`
+
+exitstatus=$STATE_OK #default
+declare -a volumeGroups;
+novg=0; #number of volume groups
+excludeVolumeGroups=''; #Volume groups to ignore if searching all
+allVG=false; #Will we use all volume groups we can find on system?
+inPercent=false; #Use percentage for comparison?
+
+unitsGB="GB"
+unitsPercent="%"
+units=$unitsGB
+
+########################################################################
+### DEFINE FUNCTIONS
+########################################################################
+
+print_usage() {
+	echo "Usage: $PROGNAME  -w <min size warning level in gb> -c <min size critical level in gb> -v <volumegroupname> [-a] [-p]"
+	echo "If '-a' and '-v' are specified: all volumegroups defined by -v will be ommited and the remaining groups which are found on system are checked"
+	echo "If '-p' is specified: the warning and critical levels are represented as the percent space left on device"
+    echo ""
+}
+
+print_help() {
+	print_usage
+	echo ""
+	echo "This plugin will check how much space is free in volume groups"
+	echo "usage: "
+	exit $STATE_UNKNOWN
+}
+
+	
+checkArgValidity () {
+# Check arguments for validity
+	if [[ -z $critlevel || -z $warnlevel ]] # Did we get warn and crit values?
+	then    
+	        echo "You must specify a warning and critical level"
+		print_usage
+	        exitstatus=$STATE_UNKNOWN
+	        exit $exitstatus 
+	elif [ $warnlevel -le $critlevel ] # Do the warn/crit values make sense?
+	then
+        if [ $inPercent != 'true' ]
+        then
+            echo "CRITICAL value of $critlevel GB is less than WARNING level of $warnlevel GB"
+            print_usage
+            exitstatus=$STATE_UNKNOWN
+            exit $exitstatus
+        else
+            echo "CRITICAL value of $critlevel % is higher than WARNING level of $warnlevel %"
+            print_usage
+            exitstatus=$STATE_UNKNOWN
+            exit $exitstatus
+        fi
+	fi
+}
+
+#Does volume group actually exist?
+volumeGroupExists () {
+	local volGroup="$@"
+	VGValid=$($_vgs 2>/dev/null | grep "$volGroup" | wc -l )
+	
+	if [[  -z "$volGroup" ||  $VGValid = 0 ]]
+	then
+		echo "Volumegroup $volGroup wasn't valid or wasn't specified"
+		echo "with \"-v Volumegroup\", bye."
+		echo false
+		return 1
+	else
+		#The volume group exists
+		echo true
+		return 0 
+	fi
+}
+
+getNumberOfVGOnSystem () {
+	local novg=$($_vgs 2>/dev/null | wc -l)
+	let novg--
+	echo $novg
+}
+
+getAllVGOnSystem () {
+	novg=$(getNumberOfVGOnSystem)
+	local found=false;
+	for (( i=0; i < novg; i++)); do
+		volumeGroups[$i]=$($_vgs | tail -n  $(($i+1)) | head -n 1 | awk '{print $1}')
+		found=true;
+	done
+	if ( ! $found ); then
+		echo "$found"
+		echo "No Volumegroup wasn't valid or wasn't found"
+		exit $STATE_UNKNOWN 
+	fi
+}
+
+getColumnNoByName () {
+        columnName=$1
+        result=$($_vgs 2>/dev/null | head -n1 | awk -v name=$columnName '
+                BEGIN{}
+                        { for(i=1;i<=NF;i++){
+                              if ($i ~ name)
+                                  {print i } }
+                        }')
+
+        echo $result
+}
+
+convertToPercent () {
+#$1 = xx%
+#$2 = 100%
+    # Make values numbers only
+	local input="$(echo $1 | sed 's/g//i')"
+	local max="$(echo $2 | sed 's/g//i')"
+	local onePercent='';
+	local freePercent='';
+	if [ -x "$bc_bin" ] ; then
+		onePercent=$( echo "scale=2; $max / 100" | bc );
+		freePercent=$( echo "$input / $onePercent" | bc );
+	else
+		freePercent=$(perl -e "print int((($max-$input)*100/$max))")
+	fi
+	echo $freePercent;
+	return 0;
+}
+
+getSizesOfVolume () {
+	volumeName="$1";
+	#Check the actual sizes
+	cnFree=`getColumnNoByName "VFree"`;
+	cnSize=`getColumnNoByName "VSize"`;
+	freespace=`$_vgs $volumeName 2>/dev/null | awk -v n=$cnFree '/[0-9]/{print $n}' | sed -e 's/[\.,\,].*//'`;
+	fullspace=`$_vgs $volumeName 2>/dev/null | awk -v n=$cnSize '/[0-9]/{print $n}' | sed -e 's/[\.,\,].*//'`;
+
+	if ( $inPercent ); then
+	#Convert to Percents
+		freespace="$(convertToPercent $freespace $fullspace)"
+	fi 
+}
+
+setExitStatus () {
+	local status=$1
+	local volGroup="$2"
+	local formerStatus=$exitstatus
+
+	if [ $status -gt $formerStatus ]
+	then
+		formerStatus=$status
+	fi
+
+	if [ $status = $STATE_UNKNOWN ] ; then
+		SERVICEOUTPUT="${volGroup}"
+		exitstatus=$STATE_UNKNOWN
+		return
+	fi
+
+	if [ "$freespace" -le "$critlevel" ]
+	then
+		SERVICEOUTPUT=$SERVICEOUTPUT" VG $volGroup CRITICAL Available space is $freespace $units;"
+		exitstatus=$STATE_CRITICAL
+	elif [ "$freespace" -le "$warnlevel" ]
+	then
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup WARNING Available space is $freespace $units;"
+		exitstatus=$STATE_WARNING
+	else
+		SERVICEOUTPUT=$SERVICEOUTPUT"VG $volGroup OK Available space is $freespace $units;"
+		exitstatus=$STATE_OK
+	fi 
+
+	SERVICEPERFDATA="$SERVICEPERFDATA $volGroup=$freespace$units;$warnlevel;$critlevel"
+	if [ $inPercent != 'true' ] ; then
+
+		SERVICEPERFDATA="${SERVICEPERFDATA};0;$fullspace"
+	fi
+
+	if [ $formerStatus -gt $exitstatus ]
+	then
+		exitstatus=$formerStatus
+	fi
+}
+
+
+checkVolumeGroups () {
+checkArgValidity
+	for (( i=0; i < novg; i++ )); do
+		local status="$STATE_OK"
+		local currentVG="${volumeGroups[$i]}"
+	
+		local groupExists="$(volumeGroupExists "$currentVG" )"
+		
+		if [ "$groupExists" = 'true' ]; then
+			if [ -n "$excludeVolumeGroups" ] && check=$(echo "$excludeVolumeGroups" | grep -q " $currentVG ") ; then
+				#currentVG skipped
+				continue
+			fi
+			getSizesOfVolume "$currentVG" 
+			status=$STATE_OK
+		else
+			status=$STATE_UNKNOWN
+			setExitStatus $status "${groupExists}"
+			break
+		fi
+		
+		setExitStatus $status "$currentVG"
+	done
+}
+
+########################################################################
+### RUN PROGRAM
+########################################################################
+
+
+########################################################################
+#Read input values
+while getopts "w:c:v:hap" opt ;do
+	case $opt in
+		h)
+			print_help;
+			exit $exitstatus;
+			;;
+		w)
+			warnlevel=$OPTARG;
+			;;
+		c)
+			critlevel=$OPTARG;
+			;;
+		v)
+			#populate both values, decide which to use after while loop. Otherwise, order of parameters matters.
+			excludeVolumeGroups="$excludeVolumeGroups $OPTARG "
+			volumeGroups[$novg]=$OPTARG;
+			let novg++;
+			;;
+		a)
+			allVG=true;
+			;;
+		p)
+			inPercent=true;
+			units=$unitsPercent
+			;;
+		\?)
+			echo "Invalid option: -$OPTARG" >&2
+			;;
+	esac
+done
+
+if ( ! $allVG ) ; then
+	excludeVolumeGroups=''
+	if [ $novg -lt 1 ] ; then
+		echo "No volume group specified to check. See usage."
+		exit $STATE_UNKNOWN
+	fi
+else
+	if [ "$novg" -gt 0 ] ; then
+		novg=0
+		volumeGroups=()
+	fi
+	getAllVGOnSystem
+fi
+
+checkVolumeGroups
+
+if [ -z "$SERVICEOUTPUT" -o -z "$SERVICEPERFDATA" ] ; then
+	echo "No data found, check parameters."
+	exit $STATE_UNKNOWN
+fi
+
+
+echo $SERVICEOUTPUT"|"$SERVICEPERFDATA
+exit $exitstatus
+

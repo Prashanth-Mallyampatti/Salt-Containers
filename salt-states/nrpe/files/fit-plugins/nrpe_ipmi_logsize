@@ -1,0 +1,126 @@
+#!/bin/ksh
+#
+# checking treshold of IPMI logfile
+#
+#	$URL: http://fcil01v140.fci.internal/svn/Nagios-Plugins/plugins/nrpe_scripts/nrpe_ipmi_logsize $
+#	$Rev: 452 $
+#	$Id: nrpe_ipmi_logsize 452 2017-11-28 21:18:46Z itvolla $
+#
+# Gibt ein WARNING oder CRITICAL zurueck, wenn das IPMI
+# Logfile bis zu genannten Schwellwert gefuellt ist
+#
+# Angaben muessen in % erfolgen
+#
+# SYNTAX: /usr/lib/nagios/plugins/nrpe_ipmi_logsize -w #warn -c #crit
+#
+# responsible: Adam Vollmar
+#
+# Requirements: nrpe agent must be configured and running, ipmitool
+#               entry in /etc/sudoers or /etc/sudoers.d/nagios
+#
+# itlenzj: 20140311: script erstellt
+#
+
+##project## yes=supported, todo=planned, NA=not applicable, not=not allowed, test=test, ?=unknown
+# project     Responsible   : itvolla
+# project     Level         : 4
+# project     CLASS         : MONITORING
+# project     Script        : ksh
+# project OS  AIX52         : not
+# project OS  AIX61         : not
+# project OS  AIX71         : not
+# project OS  SLES8         : NA
+# project OS  SLES9         : yes
+# project OS  SLES10        : yes
+# project OS  SLES11        : yes
+# project OS  SLES11SP2     : yes
+# project OS  SLES12        : yes
+# project OS  HP-UX         : not
+# project     nSID          : NA
+# project     DC two-digit  : NA
+# project     wcoll extern  : NA
+# project     NetApp        : NA
+# project     no ssh cw     : NA
+# project     no r-commands : NA
+# project     node.cfg      : NA
+# project DB  ORACLE        : NA
+# project DB  DB2           : NA
+# project DB  SAPDB         : NA
+# project DB  SYBASE        : NA
+# project LOC Germany       : yes
+# project LOC USA           : todo
+# project LOC China         : yes
+# project LOC Canada        : NA
+
+IPMITOOL="/usr/bin/ipmitool"
+
+OK=0
+WARN=1
+CRIT=2
+UNKN=3
+
+# defaults 
+WARN_VAL=80
+CRIT_VAL=90
+
+while getopts :w:c: param; do
+	case $param in
+		w)	WARN_VAL=$OPTARG;;
+		c)	CRIT_VAL=$OPTARG;;
+		\?)	echo "UNKNOWN: $0 Illegal option '$OPTARG' found!"
+			exit $UNKN
+			;;
+		*)	echo "UNKNOWN: $0 unknown error!"
+			exit $UNKN
+			;;
+	esac
+done
+
+# remove possible % sign
+WARN_VAL=$(echo $WARN_VAL | sed -e 's/%//g')
+CRIT_VAL=$(echo $CRIT_VAL | sed -e 's/%//g')
+
+# check if WARN value is smaller than CRIT value
+# if not, return UNKNOWN
+if [[ $WARN_VAL -ge $CRIT_VAL ]]; then
+	echo "UNKNOWN: $0 specified warning value is equal or greater than critical value! WARN=$WARN_VAL, CRIT=$CRIT_VAL"
+	exit $UNKN
+fi
+
+# test if IPMItool exists
+if [[ ! -e $IPMITOOL ]]; then
+	echo "WARNING - $0 $IPMITOOL is not installed or not executeable!"
+	exit $WARN
+fi
+
+# test the IPMItool
+QUERY=$(sudo $IPMITOOL sel info 2>&1)
+
+if [[ $? -ne 0 ]]; then
+	echo "WARNING - Error executing ipmitool: $QUERY"
+	exit $WARN
+fi
+
+# get the number of entries
+ENTRIES=$(echo "$QUERY" | grep -i entries | awk '{print $NF}')
+
+if [[ $ENTRIES -eq 0 ]]; then #{
+	echo "OK - The IPMI System Event Log is clean."
+	exit $OK
+else
+	# get the SEL size
+	LOGSIZE=$(echo "$QUERY" | grep -i "percent used" | awk '{print $NF}' | sed -e 's/%//g')
+	
+	if [[ $LOGSIZE -lt $WARN_VAL ]]; then
+		echo "OK - IPMI System Event Log filled to: ${LOGSIZE}% (W: $WARN_VAL C: $CRIT_VAL)"
+		exit $OK
+	elif [[ $WARN_VAL -le $LOGSIZE ]] && [[ $LOGSIZE -lt $CRIT_VAL ]]; then
+		echo "WARNING - IPMI System Event Log filled to ${LOGSIZE}% (W: $WARN_VAL C: $CRIT_VAL)"
+		exit $WARN
+	elif [[ $LOGSIZE -ge $CRIT_VAL ]]; then
+		echo "CRITICAL - IPMI System Event Log filled to ${LOGSIZE}% (W: $WARN_VAL C: $CRIT_VAL)"
+		exit $CRIT
+	fi
+fi #}
+
+
