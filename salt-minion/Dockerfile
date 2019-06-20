@@ -12,7 +12,13 @@ RUN cp /usr/lib/systemd/system/dbus.service /etc/systemd/system/; \
 RUN zypper ref && \
     zypper -n in salt-minion python-M2Crypto && \
     zypper clean -a && \
-    mkdir /srv/salt
+    zypper -n install vim && \
+    zypper -n install vim-data && \
+    mkdir /srv/salt && \
+    touch /etc/salt/minion
+
+RUN sed -i 's/#proxy_host:/proxy_host: 10.133.132.165/g' /etc/salt/minion && \
+    sed -i 's/#proxy_port:/proxy_port: 8181/g' /etc/salt/minion
 
 VOLUME ["/sys/fs/cgroup", "/run"]
 

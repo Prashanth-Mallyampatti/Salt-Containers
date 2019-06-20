@@ -7,14 +7,30 @@
 export https_proxy="http://10.133.132.165:8181"
 export http_proxy="http://10.133.132.165:8181"
 
+
+# Kill processes holding locks except with PIDs.
+# Remove any locks held by those processes
+# And reconfigure the packages if necessary
+declare -a locks=("/var/lib/dpkg/lock*" "/var/lib/apt/lists/lock" "/var/cache/apt/archives/lock")
+for val in ${locks[@]}; do
+  PID=$(lsof -t $val 2>&1)
+  if [ $? -eq 0 ] && [ ! -z "$PID" ]
+  then
+    kill -9 $PID
+  fi
+  rm -rf $val 
+done
+
+
+# After removing locks, reconfiguring the packages
+echo Package Reconfiguration...
+dpkg --configure -a
+
 # Remove older versions of docker
 apt-get remove docker docker-engine docker.io containerd runc
 
+# Catch errors from here
 set -e
-
-# Remove any locks held by others
-rm /var/lib/apt/lists/lock
-rm /var/lib/dpkg/lock
 
 # Install Docker from repository
 apt update
