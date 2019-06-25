@@ -6,15 +6,31 @@ set -e
 
 # Set variables
 # SALT_PATH here is directory structure dependent and should be retained in the same order for successful build
-PROXY="http://10.133.132.165:8181"
-SALT_PATH="/root/devops-salt-container/salt-minion/"
 
+IP=$(sed -e 's|\/|\\\/|g' <<< "$(awk -F'proxy_ip:' '{print $2}' .gitignore)")
+SALT_IP=$(sed -e 's|\\|\\\\|g' <<< $IP)
+PORT=$(awk -F'proxy_port:' '{getline;print $2}' .gitignore)
+PROXY="$IP:$PORT"
+
+SALT_PATH="/root/devops-salt-container/salt-minion/"
+SALT_PROXY_IP="sed -i 's/#proxy_host:.*/proxy_host: $SALT_IP/g' /etc/salt/minion"
+SALT_PROXY_PORT="sed -i 's/#proxy_port:.*/proxy_port: $PORT/g' /etc/salt/minion"
+MINION_FILE="touch \/etc\/salt\/minion"
 
 # Add ENV variables
 echo
 echo Setting proxies...
 sed -i '/ENV HTTP/d' $SALT_PATH/Dockerfile
 sed -i '/FROM .*/a ENV HTTP_PROXY "'$PROXY'"\nENV HTTPS_PROXY "'$PROXY'"' $SALT_PATH/Dockerfile
+
+
+# Add proxies for salt-minion inside container
+echo
+echo Adding salt-minion proxies...
+sed -i -e '/proxy_host: .*/d' \
+       -e '/proxy_port: .*/d' \
+       $SALT_PATH/Dockerfile
+sed -i "s|$MINION_FILE.*|$MINION_FILE \&\& \\\\\n    $SALT_PROXY_IP \&\& \\\\\n    $SALT_PROXY_PORT|g" $SALT_PATH/Dockerfile
 
 
 # Restart Docker

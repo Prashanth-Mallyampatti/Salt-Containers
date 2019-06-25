@@ -15,10 +15,10 @@ RUN zypper ref && \
     zypper -n install vim && \
     zypper -n install vim-data && \
     mkdir /srv/salt && \
-    touch /etc/salt/minion
+    touch /etc/salt/minion && \
+    sed -i 's/#proxy_host:.*/proxy_host: http:\/\/10.133.132.165/g' /etc/salt/minion && \
+    sed -i 's/#proxy_port:.*/proxy_port: 8181/g' /etc/salt/minion
 
-RUN sed -i 's/#proxy_host:/proxy_host: 10.133.132.165/g' /etc/salt/minion && \
-    sed -i 's/#proxy_port:/proxy_port: 8181/g' /etc/salt/minion
 
 VOLUME ["/sys/fs/cgroup", "/run"]
 

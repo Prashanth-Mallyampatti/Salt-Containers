@@ -12,10 +12,9 @@
 <br />
 
 **Note:** 
-- Place and un all scripts in `/root` only.
+- Place and run all scripts in `/root` only.
 - The scripts are *directory structure dependent*.
-- The *proxy* address used: `http://10.133.132.165:8181`
-- *DNS* addresses used in the above scripts are obtained from *windows cmd*: `ipconfig /all`. So please update *DNS* variables in `configure_docker.sh` as per your addresses.
+- The *proxy* address used: `http://10.133.132.165:8181`. Please update it in `../installation-scripts/.gitgnore` file.
 - Place all the salt's `.sls` files/folders that are to be executed in `devops-salt-container/salt-states/` 
 - If the salt state is defined in defined `top.sls` pass an empty argument (not even a space) in Step 6.
 
