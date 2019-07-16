@@ -48,7 +48,7 @@ export http_proxy=$PROXY
 # Build Docker image
 # Tag field is left blank, so docker picks :latest as default
 echo
-echo Building Docker image...
+echo Building OpenSuse Docker image 42.3
 docker build -t salt-minion $SALT_PATH
 
 

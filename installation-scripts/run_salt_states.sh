@@ -33,3 +33,4 @@ echo
 echo Executing \'$1\' salt state as a minion...
 echo
 docker exec -i -t $CONTAINER salt-call --local state.apply $1
+
