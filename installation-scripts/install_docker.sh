@@ -7,6 +7,11 @@ set +e
 # Look for processes holding locks.
 # If no process is holding the lock then remove the lock.
 
+echo
+echo
+echo "############## Starting Docker installation #################"
+echo
+
 declare -a locks=("/var/lib/dpkg/lock" "/var/lib/dpkg/lock-frontend" "/var/lib/apt/lists/lock" "/var/cache/apt/archives/lock")
 FLAG=0
 for val in "${locks[@]}"

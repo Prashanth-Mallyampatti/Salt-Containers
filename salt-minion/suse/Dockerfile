@@ -1,6 +1,4 @@
 FROM scratch
-ENV http_proxy "http://10.133.132.165:8181"
-ENV https_proxy "http://10.133.132.165:8181"
 ENV container docker
 
 MAINTAINER Prashanth_M@SYNTAX
@@ -23,17 +21,9 @@ RUN zypper ref && \
     zypper -n install glibc-locale && \
     mkdir /srv/salt
 
-RUN touch /etc/salt/minion && \
-    sed -i 's/#proxy_host:.*/proxy_host: http:\/\/10.133.132.165/g' /etc/salt/minion && \
-    sed -i 's/#proxy_port:.*/proxy_port: 8181/g' /etc/salt/minion
-
-
-
-
-
 VOLUME ["/sys/fs/cgroup", "/run"]
 
 ADD salt-minion.sh /
 
 CMD /salt-minion.sh
-CMD ["/usr/sbin/init"]
+CMD ["/sbin/init"]

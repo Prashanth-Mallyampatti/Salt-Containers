@@ -61,8 +61,8 @@ remove_existing_proxies()
 	sed -i '/ENV http_proxy/d' $SALT_PATH/Dockerfile
 	sed -i '/ENV https_proxy/d' $SALT_PATH/Dockerfile
 	
-	sed -i -e '/proxy_host: .*/d' \
-	       -e '/proxy_port: .*/d' \
+	sed -i -e '/proxy_port: .*/,+1d' \
+               -e '/proxy_host: .*/d' \
 	       -e "/RUN $MINION_FILE .*/d" \
                $SALT_PATH/Dockerfile
 }
@@ -106,9 +106,12 @@ ping_test()
 main()
 {
 	echo
+        echo
+        echo "############## Building Container Images ###############"
+        echo
 	echo $1
 	echo
-	
+		
 	if [ $PROXY_FLAG -eq 1 ]
 	then
 		set_variables "$2"
@@ -127,19 +130,23 @@ main()
 	build_image "$3"
 	check_build_success "$3"
 	ping_test "$3"
+	source ./run_container.sh
 }
 
 case "$option" in
 	1)
-	main "Opensuse 42.3" "/root/devops-salt-container/salt-minion/suse" "opensuse"
+	IMAGE_NAME="opensuse"
+	main "Opensuse 42.3" "/root/devops-salt-container/salt-minion/suse" "$IMAGE_NAME"
 	;;
 	
 	2)
-	main "Ubuntu 18.04" "/root/devops-salt-container/salt-minion/ubuntu" "ubuntu"
+	IMAGE_NAME="ubuntu"
+	main "Ubuntu 18.04" "/root/devops-salt-container/salt-minion/ubuntu" "$IMAGE_NAME"
 	;;
 
         3)
-	main "Centos 7" "/root/devops-salt-container/salt-minion/centos" "centos"
+	IMAGE_NAME="centos"
+	main "Centos 7" "/root/devops-salt-container/salt-minion/centos" "$IMAGE_NAME"
 	;;
 
 	*) 

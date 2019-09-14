@@ -1,4 +1,4 @@
-#!/bin/bash\
+#!/bin/bash
 
 set -e
 
@@ -18,24 +18,10 @@ read yes_no
 
 call_scripts()
 {
-        echo
-	echo
-        echo "############## Starting Docker installation #################"
-        echo
-	alias exit=return
 	source ./install_docker.sh
 	
-	echo
-	echo
-	echo "############## Configuring Docker ###############"
-	echo 
-	alias exit=return
 	source ./configure_docker.sh
 	
-	echo
-	echo
-	echo "############## Building Container Images ###############"
-	echo
 	source ./salt_minion_docker.sh
 }
 

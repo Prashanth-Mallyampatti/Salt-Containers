@@ -1,6 +1,4 @@
 FROM ubuntu:18.04
-ENV http_proxy "http://10.133.132.165:8181"
-ENV https_proxy "http://10.133.132.165:8181"
 ENV container docker
 
 MAINTAINER Prashanth_M@SYNTAX
@@ -48,13 +46,6 @@ RUN \
     apt-get install -y salt-minion && \
     mkdir /srv/salt
 
-RUN touch /etc/salt/minion && \
-    sed -i 's/#proxy_host:.*/proxy_host: http:\/\/10.133.132.165/g' /etc/salt/minion && \
-    sed -i 's/#proxy_port:.*/proxy_port: 8181/g' /etc/salt/minion
-
-
-
-
 RUN service salt-minion restart
 
-CMD ["/usr/sbin/init"]
+CMD ["/sbin/init"]

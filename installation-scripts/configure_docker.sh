@@ -4,6 +4,11 @@ set -e
 
 #Run the following script in root mode
 
+echo
+echo
+echo "############## Configuring Docker ###############"
+echo
+
 if [ $PROXY_FLAG -eq 1 ]
 then
 	#Set variables, the following DNS addresses are obtained from windows cmd line: ipconfig /all
